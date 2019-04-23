@@ -26,7 +26,7 @@ def parse_audio_lines(lines):
     for line in lines.splitlines():
         audio_line = line.split()
         to_split = dict()
-        to_split['input_file']   = audio_line[0]
+        to_split['inputFile']   = audio_line[0]
         to_split['intervals']    = [Interval(start=interval[0], end=interval[1]) for interval in 
                                             zip(audio_line[1::2], audio_line[2::2])]
         audios_to_split.append(to_split)
@@ -34,19 +34,18 @@ def parse_audio_lines(lines):
 
 def splitted_audio_files_reply(bot, update):   
     chat_id = update.message.chat_id
+    bot.send_message(chat_id=chat_id, text='Starting to split files...')
     
     audios_to_split = parse_audio_lines(update.message.text)
+    totalIntrvs = str(len(audios_to_split))
+    i=0; progressMessage = bot.send_message(chat_id=chat_id, text=str(i)+'/'+totalIntrvs+' ...')
     
-    bot.send_message(chat_id=chat_id, text='Starting to split files...')
     for audio in audios_to_split:
-        bot.send_message(chat_id=chat_id, text='Splitting '+audio['input_file']) #change this to a percentage, maybe editing the message
-        for interval in audio['intervals']:
-            input_file  = './'+audio['input_file']
-            output_file = input_file[0:-4]+'_'+interval.start+interval.end+input_file[-4::1]
-            audioSplitter.split_by_intervals(audio['input_file'],
-                                                    output_file,
-                                                    interval.start,
-                                                    interval.end)
+        inputFile = sourceDir+audio['inputFile']
+        audioSplitter.split_by_intervals(inputFile, outputDir, audio['intervals'])
+        i+=1; progressMessage.edit_text(
+                str(i)+'/'+totalIntrvs+' - Currently splitting '+audio['inputFile'])
+   
     bot.send_message(chat_id=chat_id, text='Finished!\nDownload link: LINK') #comming soon
 
 def invalid_command_reply(bot, update):
@@ -76,14 +75,18 @@ class Filter(BaseFilter):
         for aType in audioTypes:
             if aType in msg:
                 return True
-        return False
+        return False or not audioTypes
     def invalid_command(self, message):
         msg = message.text.lower()
-        return (not 'start' in msg) or (not 'end' in msg) or (not audio_type(msg))
+        return (not 'start' in msg) or (not 'help' in msg) or (not audio_type(msg))
 
 def main():
     botArgs = parse_input()
-    
+    global sourceDir
+    global outputDir
+    sourceDir = botArgs.sourcedir+'/'*(botArgs.sourcedir[-1]!='/')
+    outputDir = botArgs.outputdir+'/'*(botArgs.outputdir[-1]!='/')
+
     updater = Updater(botArgs.token)
     updater.dispatcher.add_handler(CommandHandler("start", start))
     updater.dispatcher.add_handler(CommandHandler("help", help))
