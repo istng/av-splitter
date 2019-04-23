@@ -1,6 +1,5 @@
 import subprocess
 import argparse
-from collections import namedtuple
 
 
 argumentsDescMsg = 'Initialize bot optios.'
@@ -10,8 +9,6 @@ outputDirArgHelp = 'output directory'
 intervalsArgHelp = 'list of intervals of the form: hh:mm:ss(start) hh:mm:ss(end)'
 funcDefault      = 'split_by_intervals'
 
-Interval  = namedtuple('Interval', ['start', 'end'])
-AudioLine = namedtuple('AudioLine', ['audio', 'outputDir', 'intervals'])
 
 def split_interval(input_file, output_file, start, end):
     cut_command = 'ffmpeg -i {ifl} -ss {st} -vn -c copy -to {ed} {of}'.format(
@@ -20,8 +17,8 @@ def split_interval(input_file, output_file, start, end):
 
 def split_by_intervals(inputFile, outputDir, intervals):
     for interval in intervals:
-        outputFile = outputDir+'_'+interval.start+'-'+interval.end+inputFile[-4::1]
-        split_interval(inputFile, outputFile, interval.start, interval.end)
+        outputFile = outputDir+'_'+interval['start']+'-'+interval['end']+inputFile[-4::1]
+        split_interval(inputFile, outputFile, interval['start'], interval['end'])
 
 def parse_input():
     parser = argparse.ArgumentParser(description=argumentsDescMsg, 
@@ -34,14 +31,14 @@ def parse_input():
     parser.add_argument('intervals', metavar='INTERVALS', type=str, nargs='+', help=intervalsArgHelp)
     args = parser.parse_args()
  
-    intervals = [Interval(start=interval[0], end=interval[1]) for interval in 
+    intervals = [{'start':interval[0], 'end':interval[1]} for interval in 
             zip(args.intervals[0::2], args.intervals[1::2])]
-    return AudioLine(audio=args.input, outputDir=args.outputdir, intervals=intervals)
+    return {'audio':args.input, 'outputDir':args.outputdir, 'intervals':intervals}
 
 
 def main():
     audioLine = parse_input()
-    split_by_intervals(audioLine.input, audioLine.outputDir, audioLine.intervals)
+    split_by_intervals(audioLine['input'], audioLine['outputDir'], audioLine['intervals'])
 
 if __name__ == '__main__':
     main()

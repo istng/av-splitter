@@ -3,7 +3,6 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram.ext import BaseFilter, MessageHandler, Filters
 import logging
 import argparse
-from collections import namedtuple
 import audioSplitter
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -19,15 +18,14 @@ audioBotHelpMsg   = 'Currently this bot is under construction.'
 invalidCommandMsg = 'Invalid command.'
 
 audioTypes = ['zapada', 'ensayo']
-Interval   = namedtuple('Interval', ['start', 'end'])
 
 def parse_audio_lines(lines):
     audios_to_split = []
     for line in lines.splitlines():
         audio_line = line.split()
         to_split = dict()
-        to_split['inputFile']   = audio_line[0]
-        to_split['intervals']    = [Interval(start=interval[0], end=interval[1]) for interval in 
+        to_split['inputFile'] = audio_line[0]
+        to_split['intervals'] = [{'start':interval[0], 'end':interval[1]} for interval in 
                                             zip(audio_line[1::2], audio_line[2::2])]
         audios_to_split.append(to_split)
     return audios_to_split
