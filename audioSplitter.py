@@ -20,7 +20,8 @@ def split_by_intervals(input_file, output_file, start, end):
 
 
 def parse_input():
-    parser = argparse.ArgumentParser(description=argumentsDescMsg, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description=argumentsDescMsg, 
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     #TODO: support for more functions
     #parser.add_argument('-f', metavar='FUNCTION', type=str, default=funcDefault, help=functionArgHelp)
