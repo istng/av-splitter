@@ -1,5 +1,8 @@
 import subprocess
 import argparse
+import re
+from datetime import datetime as dt
+import os
 
 
 argumentsDescMsg = 'Initialize bot options.'
@@ -7,6 +10,17 @@ inputArgHelp     = 'input audio file'
 outputDirArgHelp = 'output directory'
 intervalsArgHelp = 'list of intervals of the form: hh:mm:ss(start) hh:mm:ss(end)'
 funcDefault      = 'split_by_intervals'
+timeRegex        = '(\d{2})(:(\d{2})){2}$' #it stands for hh:mm:ss
+notClosedIntvErr = 'Some interval is not closed'
+greaterStartErr  = 'Interval with greater start: '
+greaterThnDurErr = 'Interval greater than total duration: '
+dirError         = '{0} is not a directory or does not exist'
+
+
+def get_audio_duration(input_file):
+    durationCall = 'ffmpeg -i Zapada_2019.03.02.wav 2>&1 | grep Duration'
+    duration = subprocess.check_output(durationCall, shell=True)
+    return str(duration)[14:22]
 
 
 def split_interval(input_file, output_file, start, end):
@@ -16,7 +30,7 @@ def split_interval(input_file, output_file, start, end):
 
 
 def get_output_file(inputFile, outputDir, start, end):
-    return outputDir+'_'+start+'-'+end+inputFile[-4::1]
+    return outputDir+inputFile[0:-4]+'_'+start+'-'+end+inputFile[-4::1]
 
 
 def split_by_intervals(inputFile, outputDir, intervals):
@@ -25,27 +39,53 @@ def split_by_intervals(inputFile, outputDir, intervals):
         split_interval(inputFile, outputFile, interval['start'], interval['end'])
 
 
-def normalize_arguments(arguments):
+def dir_path_type(dirname):
+    if not os.path.exists(dirname):
+        msg = dirError.format(dirname)
+        raise argparse.ArgumentTypeError(msg)
+    else:
+        return dirname
+
+
+def time_regex_type(s, pat=re.compile(timeRegex)):
+    if not pat.match(s):
+        raise argparse.ArgumentTypeError()
+    return s
+
+
+def normalize_intervals(agrIntervals, maxEnd):
+    if len(agrIntervals) % 2 != 0:
+        raise ValueError(notClosedError)
+
     intervals = [{'start':interval[0], 'end':interval[1]} for interval in 
-            zip(arguments.intervals[0::2], arguments.intervals[1::2])]
-    return {'audio':arguments.input, 'outputDir':arguments.outputdir, 'intervals':intervals}
+            zip(agrIntervals[0::2], agrIntervals[1::2])]
+    
+    HMS = '%H:%M:%S'
+    for interval in intervals:
+        if dt.strptime(interval['end'], HMS) > dt.strptime(maxEnd, HMS):
+            raise ValueError(greaterThnDurErr+interval['start']+' '+interval['end'])
+        if dt.strptime(interval['start'], HMS) > dt.strptime(interval['end'], HMS):
+            raise ValueError(greaterStartErr+interval['start']+' '+interval['end'])
+
+    return intervals
 
 
 def parse_input():
     parser = argparse.ArgumentParser(description=argumentsDescMsg, 
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    parser.add_argument('input', metavar='INPUT_FILE', type=str, help=inputArgHelp)
-    parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=str, help=outputDirArgHelp)
-    parser.add_argument('intervals', metavar='INTERVALS', type=str, nargs='+', help=intervalsArgHelp)
+    parser.add_argument('inputfile', metavar='INPUT_FILE', type=dir_path_type, help=inputArgHelp)
+    parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=dir_path_type, help=outputDirArgHelp)
+    parser.add_argument('intervals', metavar='INTERVALS', type=time_regex_type, nargs='+', help=intervalsArgHelp)
     arguments = parser.parse_args()
- 
-    return normalize_arguments(arguments)
+
+    arguments.intervals = normalize_intervals(arguments.intervals, get_audio_duration(arguments.inputfile))
+    return arguments
 
 
 def main():
-    audioLine = parse_input()
-    split_by_intervals(audioLine['audio'], audioLine['outputDir'], audioLine['intervals'])
+    arguments = parse_input()
+    split_by_intervals(arguments.inputfile, arguments.outputdir, arguments.intervals)
 
 
 if __name__ == '__main__':
