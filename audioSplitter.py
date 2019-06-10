@@ -5,10 +5,9 @@ from datetime import datetime as dt
 import os
 
 
-argumentsDescMsg = 'Initialize bot options.'
 inputArgHelp     = 'input audio file'
 outputDirArgHelp = 'output directory'
-intervalsArgHelp = 'list of intervals of the form: hh:mm:ss(start) hh:mm:ss(end)'
+intervalsArgHelp = 'list of intervals with shape: hh:mm:ss hh:mm:ss [name]'
 funcDefault      = 'split_by_intervals'
 timeRegex        = '(\d{2})(:(\d{2})){2}$' #it stands for hh:mm:ss
 notClosedIntvErr = 'Some interval is not closed'
@@ -29,13 +28,15 @@ def split_interval(input_file, output_file, start, end):
     subprocess.call(split, shell=True)
 
 
-def get_output_file(inputFile, outputDir, start, end):
-    return outputDir+inputFile[0:-4]+'_'+start+'-'+end+inputFile[-4::1]
+def get_output_file(inputFile, outputDir, interval):
+    if 'name' in interval:
+        return outputDir+interval['name']+inputFile[-4::1]
+    return outputDir+inputFile[0:-4]+'_'+interval['start']+'-'+interval['end']+inputFile[-4::1]
 
 
 def split_by_intervals(inputFile, outputDir, intervals):
     for interval in intervals:
-        outputFile = get_output_file(inputFile, outputDir, interval['start'], interval['end'])
+        outputFile = get_output_file(inputFile, outputDir, interval)
         split_interval(inputFile, outputFile, interval['start'], interval['end'])
 
 
@@ -47,19 +48,12 @@ def dir_path_type(dirname):
         return dirname
 
 
-def time_regex_type(s, pat=re.compile(timeRegex)):
+def validate_time_format(s, pat=re.compile(timeRegex)):
     if not pat.match(s):
-        raise argparse.ArgumentTypeError()
-    return s
+        raise ValueError('Invalid time format on: '+s)
 
 
-def normalize_intervals(agrIntervals, maxEnd):
-    if len(agrIntervals) % 2 != 0:
-        raise ValueError(notClosedError)
-
-    intervals = [{'start':interval[0], 'end':interval[1]} for interval in 
-            zip(agrIntervals[0::2], agrIntervals[1::2])]
-    
+def check_intervals_correctness(intervals, maxEnd):
     HMS = '%H:%M:%S'
     for interval in intervals:
         if dt.strptime(interval['end'], HMS) > dt.strptime(maxEnd, HMS):
@@ -67,19 +61,38 @@ def normalize_intervals(agrIntervals, maxEnd):
         if dt.strptime(interval['start'], HMS) > dt.strptime(interval['end'], HMS):
             raise ValueError(greaterStartErr+interval['start']+' '+interval['end'])
 
+
+def normalize_intervals(argIntervals):
+    intervals = []
+    for argInterval in argIntervals:
+        interval = {'start': argInterval[0], 'end': argInterval[1]}
+        if len(argInterval) == 3:
+            interval['name'] = argInterval[2]
+        intervals.append(interval)
     return intervals
 
 
+class IntervalAndName(argparse._AppendAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not (2 <= len(values) <= 3):
+            raise argparse.ArgumentError(self, "%s takes 2 or 3 values, %d given" % (option_string, len(values)))
+        else:
+            validate_time_format(values[0])
+            validate_time_format(values[1])
+        super(IntervalAndName, self).__call__(parser, namespace, values, option_string)
+
+
 def parse_input():
-    parser = argparse.ArgumentParser(description=argumentsDescMsg, 
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
+    req_flags_grp = parser.add_argument_group(title='Required with flags')
     parser.add_argument('inputfile', metavar='INPUT_FILE', type=dir_path_type, help=inputArgHelp)
     parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=dir_path_type, help=outputDirArgHelp)
-    parser.add_argument('intervals', metavar='INTERVALS', type=time_regex_type, nargs='+', help=intervalsArgHelp)
+    req_flags_grp.add_argument('--intervals', '-i', metavar='INTERVALS', type=str, nargs='+', action=IntervalAndName, help=intervalsArgHelp)
     arguments = parser.parse_args()
 
-    arguments.intervals = normalize_intervals(arguments.intervals, get_audio_duration(arguments.inputfile))
+    arguments.intervals = normalize_intervals(arguments.intervals)
+    check_intervals_correctness(arguments.intervals, get_audio_duration(arguments.inputfile))
     return arguments
 
 
