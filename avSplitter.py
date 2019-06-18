@@ -5,6 +5,11 @@ from datetime import datetime as dt
 import os
 
 
+#================#
+#String constants#
+#================#
+
+
 inputArgHelp     = 'input audio file'
 outputDirArgHelp = 'output directory'
 intervalsArgHelp = 'list of intervals with shape: hh:mm:ss hh:mm:ss [name]'
@@ -16,15 +21,20 @@ greaterThnDurErr = 'Interval greater than total duration: '
 dirError         = '{0} is not a directory or does not exist'
 
 
-def get_audio_duration(input_file):
-    durationCall = 'ffmpeg -i Zapada_2019.03.02.wav 2>&1 | grep Duration'
+#============================#
+#Audio and video manipulation#
+#============================#
+
+
+def get_duration_of(inputFile):
+    durationCall = 'ffmpeg -i '+inputFile+' 2>&1 | grep Duration'
     duration = subprocess.check_output(durationCall, shell=True)
     return str(duration)[14:22]
 
 
-def split_interval(input_file, output_file, start, end):
-    split = 'ffmpeg -i {ifl} -ss {st} -vn -c copy -to {ed} {of}'.format(
-            ifl=input_file, of=output_file, st=start, ed=end)
+def split_interval(inputFile, outputFile, start, end):
+    split = 'ffmpeg -i {ifl} -ss {st} -c copy -to {ed} {of}'.format(
+            ifl=inputFile, of=outputFile, st=start, ed=end)
     subprocess.call(split, shell=True)
 
 
@@ -38,6 +48,12 @@ def split_by_intervals(inputFile, outputDir, intervals):
     for interval in intervals:
         outputFile = get_output_file(inputFile, outputDir, interval)
         split_interval(inputFile, outputFile, interval['start'], interval['end'])
+
+
+
+#====================#
+#Border case checkers#
+#====================#
 
 
 def dir_path_type(dirname):
@@ -82,17 +98,24 @@ class IntervalAndName(argparse._AppendAction):
         super(IntervalAndName, self).__call__(parser, namespace, values, option_string)
 
 
+
+#============#
+#Main section#
+#============#
+
+
 def parse_input():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    req_flags_grp = parser.add_argument_group(title='Required with flags')
+    reqFlagsGroup = parser.add_argument_group(title='Required with flags')
     parser.add_argument('inputfile', metavar='INPUT_FILE', type=dir_path_type, help=inputArgHelp)
     parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=dir_path_type, help=outputDirArgHelp)
-    req_flags_grp.add_argument('--intervals', '-i', metavar='INTERVALS', type=str, nargs='+', action=IntervalAndName, help=intervalsArgHelp)
+    reqFlagsGroup.add_argument('--intervals', '-i', metavar='INTERVAL', type=str, nargs='+', 
+        action=IntervalAndName, help=intervalsArgHelp, required=True)
     arguments = parser.parse_args()
 
     arguments.intervals = normalize_intervals(arguments.intervals)
-    check_intervals_correctness(arguments.intervals, get_audio_duration(arguments.inputfile))
+    check_intervals_correctness(arguments.intervals, get_duration_of(arguments.inputfile))
     return arguments
 
 
