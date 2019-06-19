@@ -1,6 +1,6 @@
-# audio-splitter
-Tool to split audio files, currently beign used through a telegram bot.
+# av-splitter
+Tool to easily split audio or video files.
 
-I made the script `aduioSplitter` to split recordings of my band rehearsals, this is why currently Im not paying too much attention to all the border cases that can be found on it, although most are catch by `ffmpeg`. Im using a telegram bot as a provisional platform to use the script for my band mates.
+I made the script `avSplitter` to split recordings of my band rehearsals. The script currently uses `ffmpeg` to manipulate the audio or video file. For now the usage is by command line only, but in the near future I will be implementing a UI for Linux and hopefully Windows.
 
-A more detailed description is coming soon.
+A more detailed description is coming soon!
