@@ -40,8 +40,8 @@ def split_interval(inputFile, outputFile, start, end):
 
 def get_output_file(inputFile, outputDir, interval):
     if 'name' in interval:
-        return outputDir+interval['name']+inputFile[-4::1]
-    return outputDir+inputFile[0:-4]+'_'+interval['start']+'-'+interval['end']+inputFile[-4::1]
+        return outputDir+interval['name']+inputFile[-5:-1:1]
+    return outputDir+inputFile[0:-4]+'_'+interval['start']+'-'+interval['end']+inputFile[-5::1]
 
 
 def split_by_intervals(inputFile, outputDir, intervals):
@@ -54,14 +54,6 @@ def split_by_intervals(inputFile, outputDir, intervals):
 #====================#
 #Border case checkers#
 #====================#
-
-
-def dir_path_type(dirname):
-    if not os.path.exists(dirname):
-        msg = dirError.format(dirname)
-        raise argparse.ArgumentTypeError(msg)
-    else:
-        return dirname
 
 
 def validate_time_format(s, pat=re.compile(timeRegex)):
@@ -108,8 +100,8 @@ def parse_input():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     reqFlagsGroup = parser.add_argument_group(title='Required with flags')
-    parser.add_argument('inputfile', metavar='INPUT_FILE', type=dir_path_type, help=inputArgHelp)
-    parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=dir_path_type, help=outputDirArgHelp)
+    parser.add_argument('inputfile', metavar='INPUT_FILE', type=str, help=inputArgHelp)
+    parser.add_argument('outputdir', metavar='OUTPUT_DIRECTORY', type=str, help=outputDirArgHelp)
     reqFlagsGroup.add_argument('--intervals', '-i', metavar='INTERVAL', type=str, nargs='+', 
         action=IntervalAndName, help=intervalsArgHelp, required=True)
     arguments = parser.parse_args()
